@@ -2,6 +2,9 @@ import time
 import random
 import math
 import ctypes
+import winreg
+import sys
+import os
 from PyQt6.QtWidgets import QWidget, QMenu, QColorDialog, QApplication
 from PyQt6.QtGui import QCursor, QAction, QPainter, QColor
 from PyQt6.QtCore import Qt, QTimer, QPoint
@@ -66,6 +69,38 @@ class DesktopPet(QWidget):
         
         self.old_pos = None
         self.mouse_history = []
+        self.startup_enabled = self.check_startup()
+
+    def check_startup(self):
+        try:
+            if getattr(sys, 'frozen', False):
+                exe_path = sys.executable
+            else:
+                exe_path = f'"{sys.executable}" "{os.path.abspath(sys.argv[0])}"'
+                
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_READ)
+            value, _ = winreg.QueryValueEx(key, "MyLittleRobot")
+            winreg.CloseKey(key)
+            return value == exe_path
+        except FileNotFoundError:
+            return False
+
+    def toggle_startup_state(self):
+        self.startup_enabled = not self.startup_enabled
+        try:
+            if getattr(sys, 'frozen', False):
+                exe_path = sys.executable
+            else:
+                exe_path = f'"{sys.executable}" "{os.path.abspath(sys.argv[0])}"'
+                
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+            if self.startup_enabled:
+                winreg.SetValueEx(key, "MyLittleRobot", 0, winreg.REG_SZ, exe_path)
+            else:
+                winreg.DeleteValue(key, "MyLittleRobot")
+            winreg.CloseKey(key)
+        except Exception as e:
+            print(f"Failed to toggle startup: {e}")
 
     def get_surface_y(self):
         return get_surface_y(int(self.winId()), self.x(), self.width(), self.y() + self.height(), self.screen_geo.height())
@@ -276,6 +311,13 @@ class DesktopPet(QWidget):
         dancing_action.setCheckable(True)
         dancing_action.setChecked(self.dancing_enabled)
         dancing_action.triggered.connect(self.toggle_dancing)
+        
+        menu.addSeparator()
+        
+        startup_action = menu.addAction("Run on Startup")
+        startup_action.setCheckable(True)
+        startup_action.setChecked(self.startup_enabled)
+        startup_action.triggered.connect(self.toggle_startup_state)
         
         menu.addSeparator()
         
