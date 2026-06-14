@@ -54,6 +54,7 @@ class DesktopPet(QWidget):
         self.last_type_time = time.time()
         self.last_global_mouse_pos = QCursor.pos()
         self.last_global_mouse_time = time.time()
+        self.startup_time = time.time()
         
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.update_pet)
@@ -111,6 +112,9 @@ class DesktopPet(QWidget):
 
     def change_behavior(self):
         if self.state in ['dragged', 'thrown', 'falling', 'dizzy', 'funny_face', 'waving', 'sleeping', 'petting', 'working', 'hiding']:
+            if self.state == 'hiding' and random.random() < 0.4:
+                self.state = 'idle'
+                self.velocity_x = 0
             return
             
         behaviors = ['idle', 'looking_around', 'walking', 'flying', 'following']
@@ -161,7 +165,7 @@ class DesktopPet(QWidget):
         pet_center_y = self.y() + self.height() / 2
         dist_to_pet = math.hypot(current_cursor_pos.x() - pet_center_x, current_cursor_pos.y() - pet_center_y)
         
-        if self.hiding_enabled and mouse_speed > 2000 and dist_to_pet < 300 and self.state not in ['dragged', 'thrown', 'falling', 'hiding', 'working', 'petting']:
+        if self.hiding_enabled and (now - self.startup_time > 3.0) and mouse_speed > 2000 and dist_to_pet < 300 and self.state not in ['dragged', 'thrown', 'falling', 'hiding', 'working', 'petting']:
             self.state = 'hiding'
             self.velocity_y = -5
             
@@ -222,6 +226,7 @@ class DesktopPet(QWidget):
                 if self.state != 'working':
                     self.state = 'working'
                     self.velocity_x = 0
+                    self.velocity_y = 0
             
             if self.state == 'working' and (now - self.last_type_time) > 60:
                 self.state = 'waving'
@@ -262,6 +267,7 @@ class DesktopPet(QWidget):
                     if self.state != 'petting':
                         self.state = 'petting'
                         self.velocity_x = 0
+                        self.velocity_y = 0
                         self.audio.play_sound('purr')
 
     def mouseReleaseEvent(self, event):

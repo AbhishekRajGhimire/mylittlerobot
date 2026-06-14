@@ -10,12 +10,14 @@ class Renderer:
         
         # Hiding offset
         if pet.state == 'hiding':
-            if pet.x() < pet.screen_geo.width() / 2:
-                cx -= pet.width() * 0.4
-                pet.direction = 1
-            else:
-                cx += pet.width() * 0.4
-                pet.direction = -1
+            nearest_wall_x = 0 if pet.x() < pet.screen_geo.width() / 2 else pet.screen_geo.width() - pet.width()
+            if abs(pet.x() - nearest_wall_x) <= 15:
+                if pet.x() < pet.screen_geo.width() / 2:
+                    cx -= pet.width() * 0.4
+                    pet.direction = 1
+                else:
+                    cx += pet.width() * 0.4
+                    pet.direction = -1
         
         flip = False
         if pet.state in ['walking', 'looking_around', 'following', 'hiding']:
@@ -302,9 +304,9 @@ class Renderer:
             # Reading glasses
             painter.setPen(QPen(dark_grey, 2))
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawRoundedRect(-22, int(head_y) - 10, 16, 12, 2, 2)
-            painter.drawRoundedRect(6, int(head_y) - 10, 16, 12, 2, 2)
-            painter.drawLine(-6, int(head_y) - 4, 6, int(head_y) - 4)
+            painter.drawRoundedRect(-24, int(head_y) - 14, 20, 28, 4, 4)
+            painter.drawRoundedRect(4, int(head_y) - 14, 20, 28, 4, 4)
+            painter.drawLine(-4, int(head_y), 4, int(head_y))
 
         if pet.accessory == 'Sunglasses':
             painter.setPen(Qt.PenStyle.NoPen)
