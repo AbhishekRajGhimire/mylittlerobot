@@ -452,8 +452,13 @@ class DesktopPet(QWidget):
             dialog.setCurrentColor(self.custom_color)
         else:
             dialog.setCurrentColor(self.base_color)
-            
-        if dialog.exec():
+
+        accepted = dialog.exec()
+        # Tool windows hide on focus loss — force the robot back visible
+        self.show()
+        self.raise_()
+
+        if accepted:
             color = dialog.selectedColor()
             if color.isValid():
                 self.custom_color = color
