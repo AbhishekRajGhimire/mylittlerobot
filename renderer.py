@@ -1,5 +1,5 @@
 import math
-from PyQt6.QtGui import QColor, QPainter, QBrush, QPen, QPainterPath, QFont
+from PyQt6.QtGui import QColor, QPainter, QBrush, QPen, QPainterPath, QFont, QPolygonF
 from PyQt6.QtCore import Qt, QPointF
 
 class Renderer:

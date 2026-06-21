@@ -445,7 +445,6 @@ class DesktopPet(QWidget):
         self.save_settings()
 
     def change_color(self):
-        from PyQt6.QtWidgets import QColorDialog
         color = QColorDialog.getColor()
         if color.isValid():
             self.custom_color = color
