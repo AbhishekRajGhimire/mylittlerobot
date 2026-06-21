@@ -30,8 +30,9 @@ class Renderer:
         if flip:
             painter.scale(-1, 1)
             
-        body_color = pet.base_color
+        body_color = getattr(pet, 'custom_color', pet.base_color)
         h, s, l, a = body_color.getHsl()
+
         head_color = QColor.fromHsl(h, s, min(255, l + 30))
         dark_grey = QColor(60, 70, 80)
         yellow_accent = QColor(255, 180, 50)
