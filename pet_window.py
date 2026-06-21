@@ -445,32 +445,20 @@ class DesktopPet(QWidget):
         self.save_settings()
 
     def change_color(self):
-        try:
-            dialog = QColorDialog()
-            dialog.setOption(QColorDialog.ColorDialogOption.DontUseNativeDialog, True)
-            dialog.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-            if hasattr(self, 'custom_color'):
-                dialog.setCurrentColor(self.custom_color)
-            else:
-                dialog.setCurrentColor(self.base_color)
-
-            accepted = dialog.exec()
-        except Exception:
-            accepted = False
-        finally:
-            # Tool windows hide on focus loss — force the robot back visible
-            self.show()
-            self.raise_()
-
-        if accepted:
-            try:
-                color = dialog.selectedColor()
-                if color.isValid():
-                    self.custom_color = color
-                    self.save_settings()
-                    self.update()  # repaint immediately with new color
-            except Exception:
-                pass
+        initial = getattr(self, 'custom_color', self.base_color)
+        color = QColorDialog.getColor(
+            initial,
+            self,
+            "Pick a colour",
+            QColorDialog.ColorDialogOption.DontUseNativeDialog
+        )
+        # Tool windows hide on focus loss — always force robot back visible
+        self.show()
+        self.raise_()
+        if color.isValid():
+            self.custom_color = color
+            self.save_settings()
+            self.update()
             
     def reset_color(self):
         if hasattr(self, 'custom_color'):
