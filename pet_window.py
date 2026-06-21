@@ -445,10 +445,19 @@ class DesktopPet(QWidget):
         self.save_settings()
 
     def change_color(self):
-        color = QColorDialog.getColor(parent=self)
-        if color.isValid():
-            self.custom_color = color
-            self.save_settings()
+        dialog = QColorDialog()
+        dialog.setOption(QColorDialog.ColorDialogOption.DontUseNativeDialog, True)
+        dialog.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        if hasattr(self, 'custom_color'):
+            dialog.setCurrentColor(self.custom_color)
+        else:
+            dialog.setCurrentColor(self.base_color)
+            
+        if dialog.exec():
+            color = dialog.selectedColor()
+            if color.isValid():
+                self.custom_color = color
+                self.save_settings()
             
     def reset_color(self):
         if hasattr(self, 'custom_color'):

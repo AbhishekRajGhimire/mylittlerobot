@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QApplication
 from pet_window import DesktopPet
 from updater import start_updater
 
-APP_VERSION = "v6.0"
+APP_VERSION = "v6.1"
 
 def cleanup_old_updates():
     if getattr(sys, 'frozen', False):
