@@ -7,11 +7,12 @@ class Renderer:
     def draw(pet, painter, cursor_pos):
         cx = pet.width() / 2
         cy = pet.height() / 2
-        
+        is_peeking = False
         # Hiding offset
         if pet.state == 'hiding':
             nearest_wall_x = 0 if pet.x() < pet.screen_geo.width() / 2 else pet.screen_geo.width() - pet.width()
             if abs(pet.x() - nearest_wall_x) <= 15:
+                is_peeking = True
                 if pet.x() < pet.screen_geo.width() / 2:
                     cx -= pet.width() * 0.4
                     pet.direction = 1
@@ -20,7 +21,7 @@ class Renderer:
                     pet.direction = -1
         
         flip = False
-        if pet.state in ['walking', 'looking_around', 'following', 'hiding']:
+        if pet.state in ['walking', 'looking_around', 'following', 'hiding', 'running_to_work']:
             if pet.direction == -1: flip = True
         elif pet.velocity_x < -0.5:
             flip = True
@@ -36,7 +37,7 @@ class Renderer:
         yellow_accent = QColor(255, 180, 50)
         
         # JETPACK
-        if pet.state == 'flying':
+        if pet.state in ['flying', 'dancing']:
             painter.setBrush(QColor(255, 120, 0)) 
             painter.setPen(Qt.PenStyle.NoPen)
             flicker = math.sin(pet.anim_time * 5) * 10
@@ -60,11 +61,18 @@ class Renderer:
         swing = 0
         head_y = -30
         
-        if pet.state in ['walking', 'following', 'dancing']:
-            swing = math.sin(pet.anim_time * (4 if pet.state == 'dancing' else 2)) * 12
-            head_y -= abs(math.sin(pet.anim_time * (4 if pet.state == 'dancing' else 2))) * 3
+        if pet.state in ['walking', 'following', 'dancing', 'running_to_work']:
+            anim_speed = 1.5 if pet.state in ['dancing'] else 2
+            if pet.state == 'running_to_work': anim_speed = 4
             
-        is_sitting = pet.state in ['sleeping', 'petting', 'working']
+            swing = math.sin(pet.anim_time * anim_speed) * 12
+            head_y -= abs(math.sin(pet.anim_time * anim_speed)) * 3
+            
+            if pet.state == 'dancing':
+                head_y -= abs(math.sin(pet.anim_time * 1.5)) * 4
+                swing = math.sin(pet.anim_time * 1.5) * 15
+            
+        is_sitting = pet.state in ['sleeping', 'petting', 'working', 'watching']
         if is_sitting:
             head_y += 10
             
@@ -104,6 +112,8 @@ class Renderer:
         painter.translate(-25, 0)
         if is_sitting:
             painter.rotate(20)
+        elif pet.state == 'dancing':
+            painter.rotate(math.sin(pet.anim_time * 1.5) * 45)
         else:
             painter.rotate(swing * 2)
         painter.setPen(QPen(dark_grey, 5))
@@ -115,9 +125,11 @@ class Renderer:
         
         painter.save()
         painter.translate(25, 0)
-        if pet.state in ['waving', 'dancing']:
+        if pet.state == 'waving':
             wave_angle = -140 + math.sin(pet.anim_time * 8) * 20
             painter.rotate(wave_angle)
+        elif pet.state == 'dancing':
+            painter.rotate(-math.cos(pet.anim_time * 1.5) * 45)
         elif is_sitting:
             painter.rotate(-20)
         else:
@@ -128,6 +140,11 @@ class Renderer:
         painter.setBrush(body_color)
         painter.drawRoundedRect(-6, 12, 12, 12, 3, 3)
         painter.restore()
+
+        # NECK
+        painter.setBrush(QColor.fromHsl(h, s, max(0, l - 30)))
+        painter.setPen(QPen(dark_grey, 3))
+        painter.drawRect(-8, int(head_y), 16, abs(int(head_y)) - 5)
 
         # BODY
         painter.setPen(QPen(dark_grey, 3))
@@ -140,6 +157,13 @@ class Renderer:
         painter.drawEllipse(QPointF(0, 5), 4, 4)
 
         # HEAD
+        painter.save()
+        if is_peeking:
+            painter.translate(0, -5)
+            tilt = getattr(pet, 'peek_tilt_multiplier', 1)
+            painter.rotate(35 * tilt)
+            painter.translate(0, 5)
+
         painter.setPen(QPen(dark_grey, 2))
         painter.setBrush(yellow_accent)
         painter.drawRoundedRect(-40, head_y - 10, 10, 20, 2, 2)
@@ -220,10 +244,6 @@ class Renderer:
             painter.setBrush(QColor(200, 100, 100)) # reddish
             painter.drawEllipse(QPointF(0, head_y + 10), 3, 4)
             
-            # Cute blush patches
-            painter.setBrush(QColor(255, 150, 150, 150))
-            painter.drawEllipse(QPointF(-25, head_y + 5), 6, 4)
-            painter.drawEllipse(QPointF(25, head_y + 5), 6, 4)
         elif pet.state == 'petting':
             # Heart Eyes <3
             painter.setPen(Qt.PenStyle.NoPen)
@@ -316,6 +336,30 @@ class Renderer:
             painter.setPen(QPen(QColor(20, 20, 20), 3))
             painter.drawLine(-5, int(head_y) - 8, 5, int(head_y) - 8)
 
+        if pet.state == 'dancing' and getattr(pet, 'listening_to_music', False):
+            painter.save()
+            pulse = 1.0 + math.sin(pet.anim_time * 1.5) * 0.05
+            painter.translate(0, head_y)
+            painter.scale(pulse, pulse)
+            painter.translate(0, -head_y)
+            
+            painter.setPen(QPen(QColor(40, 40, 40), 5))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawArc(-36, int(head_y) - 26, 72, 52, 0, 180 * 16)
+            
+            painter.setPen(QPen(dark_grey, 2))
+            painter.setBrush(QColor(250, 60, 80))
+            painter.drawRoundedRect(-42, int(head_y) - 6, 14, 24, 6, 6)
+            painter.drawRoundedRect(28, int(head_y) - 6, 14, 24, 6, 6)
+            
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(50, 200, 255))
+            painter.drawEllipse(QPointF(-35, head_y + 6), 3, 6)
+            painter.drawEllipse(QPointF(35, head_y + 6), 3, 6)
+            painter.restore()
+
+        painter.restore()
+
         # Working state laptop (draws over body)
         if pet.state == 'working':
             # Screen
@@ -336,3 +380,38 @@ class Renderer:
             # Tiny glowing apple logo
             painter.setBrush(QColor(255, 255, 255))
             painter.drawEllipse(QPointF(0, 22), 3, 3)
+
+        # Watching state popcorn (draws over body)
+        if pet.state == 'watching':
+            painter.setPen(QPen(dark_grey, 2))
+            painter.setBrush(QColor(220, 40, 40))
+            path = QPainterPath()
+            path.moveTo(-15, head_y + 15)
+            path.lineTo(15, head_y + 15)
+            path.lineTo(10, head_y + 35)
+            path.lineTo(-10, head_y + 35)
+            painter.drawPath(path)
+            
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(240, 240, 240))
+            painter.drawPolygon(QPolygonF([QPointF(-5, head_y + 15), QPointF(5, head_y + 15), QPointF(2, head_y + 35), QPointF(-2, head_y + 35)]))
+            
+            painter.setPen(QPen(QColor(200, 150, 0), 1))
+            painter.setBrush(QColor(255, 240, 150))
+            for i in range(8):
+                px = (i % 4) * 6 - 9
+                py = head_y + 10 + (i // 4) * 5
+                painter.drawEllipse(int(px), int(py), 8, 8)
+                
+            if int(pet.anim_time * 10) % 5 == 0:
+                painter.drawEllipse(0, int(head_y) - 5, 6, 6)
+                
+        if pet.state == 'dancing':
+            painter.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+            for i in range(3):
+                progress = (pet.anim_time * 5 + i * 20) % 60
+                note_y = head_y - 30 - progress
+                note_x = math.sin(progress * 0.1 + i) * 20
+                alpha = max(0, 255 - int((progress / 60.0) * 255))
+                painter.setPen(QPen(QColor(255, 100, 150, alpha)))
+                painter.drawText(int(note_x), int(note_y), "♪" if i % 2 == 0 else "♫")

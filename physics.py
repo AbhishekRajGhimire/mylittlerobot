@@ -1,4 +1,5 @@
 import random
+import math
 
 class PhysicsEngine:
     def __init__(self):
@@ -18,18 +19,35 @@ class PhysicsEngine:
             if y <= 0:
                 pet.velocity_y = abs(pet.velocity_y) 
                 
-        elif pet.state in ['falling', 'thrown', 'dizzy', 'idle', 'walking', 'looking_around', 'following', 'funny_face', 'dancing', 'working', 'petting', 'hiding']:
+        elif pet.state == 'dancing':
+            if hasattr(pet, 'dance_anchor_x'):
+                dx = pet.dance_anchor_x - x
+                dy = pet.dance_anchor_y - y
+                pet.velocity_x += dx * 0.05
+                pet.velocity_y += dy * 0.05
+                
+            pet.velocity_x += math.cos(pet.anim_time * 1.0) * 0.3
+            pet.velocity_y += math.sin(pet.anim_time * 1.25) * 0.3
+            
+            pet.velocity_x *= 0.8
+            pet.velocity_y *= 0.8
+            
+            x += pet.velocity_x
+            y += pet.velocity_y
+            
+            surface_y = pet.get_surface_y()
+            floor_y = surface_y - pet.height()
+            if y >= floor_y:
+                y = floor_y
+                pet.velocity_y = -abs(pet.velocity_y) - 1.0
+                pet.dance_anchor_y = y - 30
+                
+        elif pet.state in ['falling', 'thrown', 'dizzy', 'idle', 'walking', 'looking_around', 'following', 'funny_face', 'working', 'petting', 'hiding', 'running_to_work', 'watching']:
             if pet.state == 'looking_around' and random.random() < 0.05:
                 pet.direction *= -1
                 
-            if pet.state == 'dancing':
-                if random.random() < 0.1:
-                    pet.direction *= -1
-                # Hop occasionally if touching the ground
-                surface_y = pet.get_surface_y()
-                floor_y = surface_y - pet.height()
-                if random.random() < 0.1 and y >= floor_y - 5:
-                    pet.velocity_y = -8.0
+            if pet.state == 'walking':
+                pet.velocity_x = 3.0 * pet.direction
                     
             if pet.state == 'hiding':
                 nearest_wall_x = 0 if x < pet.screen_geo.width() / 2 else pet.screen_geo.width() - pet.width()
@@ -43,8 +61,20 @@ class PhysicsEngine:
                 if abs(x - nearest_wall_x) <= 15:
                     pet.velocity_x = 0
                     x = nearest_wall_x
+                    
+            if pet.state == 'running_to_work':
+                target_x = pet.screen_geo.width() - pet.width() - 20
+                if x < target_x - 15:
+                    pet.velocity_x = 15.0
+                    pet.direction = 1
+                elif x > target_x + 15:
+                    pet.velocity_x = -15.0
+                    pet.direction = -1
+                else:
+                    pet.velocity_x = 0
+                    x = target_x
                 
-            if pet.state in ['working', 'petting']:
+            if pet.state in ['working', 'petting', 'watching']:
                 pet.velocity_x = 0
                 
             if pet.state == 'following':
@@ -61,7 +91,7 @@ class PhysicsEngine:
                     pet.velocity_x = 0
 
             # Apply gravity
-            if pet.state not in ['idle', 'walking', 'looking_around', 'following', 'working', 'petting', 'hiding']:
+            if pet.state not in ['idle', 'walking', 'looking_around', 'following', 'working', 'petting', 'hiding', 'watching']:
                 pet.velocity_y += self.gravity
                 
             y += pet.velocity_y
@@ -98,7 +128,11 @@ class PhysicsEngine:
             # Wall collisions
             if x <= 0:
                 x = 0
-                pet.velocity_x *= -self.restitution
+                if pet.state == 'walking':
+                    pet.direction = 1
+                else:
+                    pet.velocity_x *= -self.restitution
+                    
                 if abs(pet.velocity_x) > 30 and pet.state not in ['dizzy', 'funny_face']:
                     pet.state = 'dizzy'
                     pet.dizzy_timer.start(2500)
@@ -109,7 +143,11 @@ class PhysicsEngine:
                     pet.audio.play_sound('bump')
             elif x >= pet.screen_geo.width() - pet.width():
                 x = pet.screen_geo.width() - pet.width()
-                pet.velocity_x *= -self.restitution
+                if pet.state == 'walking':
+                    pet.direction = -1
+                else:
+                    pet.velocity_x *= -self.restitution
+                    
                 if abs(pet.velocity_x) > 30 and pet.state not in ['dizzy', 'funny_face']:
                     pet.state = 'dizzy'
                     pet.dizzy_timer.start(2500)
@@ -118,5 +156,9 @@ class PhysicsEngine:
                     pet.state = 'funny_face'
                     pet.dizzy_timer.start(1000)
                     pet.audio.play_sound('bump')
-                    
+            if pet.state == 'running_to_work' and abs(x - target_x) <= 15 and abs(y - floor_y) <= 5:
+                pet.state = 'working'
+                pet.velocity_x = 0
+                pet.velocity_y = 0
+                
         pet.move(int(x), int(y))

@@ -3,6 +3,7 @@ import ctypes.wintypes as wintypes
 
 def get_surface_y(win_id, pet_x, pet_w, pet_y, screen_height):
     user32 = ctypes.windll.user32
+    dwmapi = ctypes.windll.dwmapi
     highest_y = screen_height
 
     def enum_cb(hwnd, lParam):
@@ -11,8 +12,13 @@ def get_surface_y(win_id, pet_x, pet_w, pet_y, screen_height):
             return True
             
         if user32.IsWindowVisible(hwnd) and not user32.IsIconic(hwnd):
+            is_cloaked = ctypes.c_int(0)
+            dwmapi.DwmGetWindowAttribute(hwnd, 14, ctypes.byref(is_cloaked), ctypes.sizeof(is_cloaked))
+            if is_cloaked.value != 0:
+                return True
+                
             ex_style = user32.GetWindowLongW(hwnd, -20)
-            if not (ex_style & 0x00000080):
+            if not (ex_style & 0x00000080) and not (ex_style & 0x00000020):
                 length = user32.GetWindowTextLengthW(hwnd)
                 if length > 0:
                     rect = wintypes.RECT()
